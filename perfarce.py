@@ -340,7 +340,7 @@ class p4client(object):
 
         s, c = path[5:].split(b'/', 1)
         if b':' not in s:
-            s = '%s:1666' % s
+            s = b'%s:1666' % s
         self.server = s
         if c:
             if b'/' in c:
@@ -489,14 +489,13 @@ class p4client(object):
         e = os.environ.get("P4CHARSET")
         if e:
             return emap.get(e,e)
-        return self.ui.config(b'perfarce', b'encoding', None)
+        return self.ui.config(b'perfarce', b'encoding', None).decode()
 
     def decode(self, text):
         'decode text in p4 character set as utf-8'
-
         if self.encoding:
             try:
-                return text.decode(self.encoding).encode(encoding.encoding)
+                return text.decode(self.encoding).encode(str(encoding.encoding, encoding='ascii'))
             except LookupError as e:
                 raise error.Abort("%s, please check your locale settings" % e)
         return text
@@ -506,7 +505,7 @@ class p4client(object):
 
         if self.encoding:
             try:
-                return text.decode(encoding.encoding).encode(self.encoding)
+                return text.decode(str(encoding.encoding, encoding='ascii')).encode(self.encoding)
             except LookupError as e:
                 raise error.Abort("%s, please check your locale settings" % e)
         return text
@@ -555,7 +554,6 @@ class p4client(object):
 
     def run(self, cmd, files=[], abort=True, client=None):
         'Run a P4 command and yield the objects returned'
-
         c = [b'p4', b'-G']
         if self.server:
             c.append(b'-p')
@@ -726,7 +724,12 @@ class p4client(object):
         the given description. Returns the changelist number as a string.'''
 
         # get changelist data, and update it
-        changelist = self.runone(b'change -o %s' % (change or b''))
+        if isinstance(change, int) or isinstance(change, str):
+            changelist = self.runone(b'change -o %s' % (str(change).encode('ascii')))
+        if isinstance(change, bytes):
+            changelist = self.runone(b'change -o %s' % change)
+        if change is None:
+            changelist = self.runone(b'change -o ')
 
         if jobs:
             for i,j in enumerate(jobs):
@@ -1346,7 +1349,7 @@ def pull(original, ui, repo, source=None, **opts):
             repo.pushkey(b'phases', ctx.hex(), str(phases.draft), str(phases.public))
 
             ui.note(_(b'added changeset %d:%s\n') % (ctx.rev(), ctx))
-            progress.increment(item=str(c))
+            progress.increment(item=str(c).encode('ascii'))
 
     finally:
         if tags:
@@ -1540,7 +1543,7 @@ def clone(original, ui, source, dest=None, **opts):
         fp.write(b"tags = %s\n" % encode_bool(client.tags))
 
         if client.encoding:
-            fp.write(b"encoding = %s\n" % client.encoding)
+            fp.write(b"encoding = %s\n" % client.encoding.encode('ascii'))
         cu = ui.config(b"perfarce", b"clientuser")
         if cu:
             fp.write(b"clientuser = %s\n" % cu)
@@ -1703,6 +1706,7 @@ def push(original, ui, repo, dest=None, **opts):
         ui.status(_(b'pushing to client %s\n') % client.client or '')
 
     r = _pushcommon(ui, repo, client, opts)
+    
     if r is None:
         return 0
     p4rev, p4id, nodes, ctx, desc, mod, add, rem, cpy = r
@@ -1713,6 +1717,7 @@ def push(original, ui, repo, dest=None, **opts):
     for e in client.getpendinglist():
         if e[1]:
             p4id=e[0]
+            
 
     if client.keep:
         client.sync(p4id)

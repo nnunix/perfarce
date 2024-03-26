@@ -659,6 +659,7 @@ class p4client(object):
             path = os.path.join(self.normcase(pathname), fname)
 
         path = util.pconvert(path)
+        #print(path, self.rootpart, file=sys.stderr)
         if not path.startswith(self.rootpart):
             raise error.Abort(_(b'invalid p4 local path %s') % path)
 
@@ -1827,7 +1828,7 @@ def push(original, ui, repo, dest=None, **opts):
         if copies:
             ui.note(_(b'copying: %s\n') % b' '.join(f[1] for f in copies))
             for f in copies:
-                client.runs(b'copy -c %s %s %s' % (use, client.rootpart + f[0], client.rootpart + f[1]))
+                client.runs(b'copy -c %s "%s" "%s"' % (use, client.rootpart + f[0], client.rootpart + f[1]))
 
         if moves:
             modal(_(b'opening for move: %s\n'), b'edit -c %s' % use,
@@ -1835,7 +1836,7 @@ def push(original, ui, repo, dest=None, **opts):
 
             ui.note(_(b'moving: %s\n') % b' '.join(f[1] for f in moves))
             for f in moves:
-                client.runs(b'move -c %s %s %s' % (
+                client.runs(b'move -c %s "%s" "%s"' % (
                     use, client.rootpart + client.encodename(f[0]),
                     client.rootpart + client.encodename(f[1])))
 
@@ -1848,7 +1849,7 @@ def push(original, ui, repo, dest=None, **opts):
                     os.unlink(f1)
                 except Exception:
                     pass
-                client.runs(b'integrate -c %s -Di -t %s %s' % (use, client.rootpart + f[0], f1))
+                client.runs(b'integrate -c %s -Di -t "%s" "%s"' % (use, client.rootpart + f[0], f1))
 
         if mod or mod2:
             modal(_(b'opening for edit: %s\n'), b'edit -c %s' % use, files=mod + mod2, encoder=client.encodename)
